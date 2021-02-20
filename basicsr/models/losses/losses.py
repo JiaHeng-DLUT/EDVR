@@ -6,6 +6,8 @@ from torch.nn import functional as F
 
 from basicsr.models.archs.vgg_arch import VGGFeatureExtractor
 from basicsr.models.losses.loss_util import weighted_loss
+import pytorch_msssim
+
 
 _reduction_modes = ['none', 'mean', 'sum']
 
@@ -24,6 +26,9 @@ def mse_loss(pred, target):
 def charbonnier_loss(pred, target, eps=1e-12):
     return torch.sqrt((pred - target)**2 + eps)
 
+@weighted_loss
+def msssim_loss(pred, target, eps=1e-12):
+    return pytorch_msssim.msssim(pred, target)
 
 class L1Loss(nn.Module):
     """L1 (mean absolute error, MAE) loss.
@@ -121,6 +126,38 @@ class CharbonnierLoss(nn.Module):
         return self.loss_weight * charbonnier_loss(
             pred, target, weight, eps=self.eps, reduction=self.reduction)
 
+class MsssimLoss(nn.Module):
+    """MS-SSIM
+    https://github.com/JiaHeng-DLUT/pytorch-msssim
+    Args:
+        loss_weight (float): Loss weight for MS-SSIM loss. Default: 1.0.
+        reduction (str): Specifies the normalization.
+            Supported choices are None | 'relu' | 'simple'. Default: None.
+        eps (float): A value used to control the curvature near zero.
+            Default: 1e-12.
+    """
+
+    def __init__(self, loss_weight=1.0, reduction='none', eps=1e-12):
+        super(MsssimLoss, self).__init__()
+        if reduction not in ['none', 'relu', 'simple']:
+            raise ValueError(f'Unsupported reduction mode: {reduction}. '
+                             f'Supported ones are: {_reduction_modes}')
+
+        self.loss_weight = loss_weight
+        self.reduction = reduction
+        if self.reduction == 'none':
+            self.reduction = None
+        self.eps = eps
+
+    def forward(self, pred, target, weight=None, **kwargs):
+        """
+        Args:
+            pred (Tensor): of shape (N, C, H, W). Predicted tensor.
+            target (Tensor): of shape (N, C, H, W). Ground truth tensor.
+            weight (Tensor, optional): of shape (N, C, H, W). Element-wise
+                weights. Default: None.
+        """
+        return self.loss_weight * pytorch_msssim.msssim(pred, target, normalize=self.reduction)
 
 class WeightedTVLoss(L1Loss):
     """Weighted TV loss.

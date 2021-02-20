@@ -45,6 +45,14 @@ class SRModel(BaseModel):
                 self.device)
         else:
             self.cri_pix = None
+        
+        if train_opt.get('msssim_opt'):
+            pixel_type = train_opt['msssim_opt'].pop('type')
+            cri_pix_cls = getattr(loss_module, pixel_type)
+            self.cri_pix = cri_pix_cls(**train_opt['msssim_opt']).to(
+                self.device)
+        else:
+            self.cri_pix = None
 
         if train_opt.get('perceptual_opt'):
             percep_type = train_opt['perceptual_opt'].pop('type')

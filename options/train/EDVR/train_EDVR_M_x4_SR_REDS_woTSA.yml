@@ -90,6 +90,10 @@ train:
     type: CharbonnierLoss
     loss_weight: 1.0
     reduction: sum
+  msssim_opt:
+    type: MsssimLoss
+    loss_weight: 1.0
+    reduction: none
 
 # validation settings
 val:
